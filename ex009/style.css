@@ -1,0 +1,184 @@
+@charset "UTF-8";
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: Arial, Helvetica, sans-serif;
+}
+
+body {
+    padding: 40px;
+    background-color: #F2F2F2;
+}
+
+header h1 {
+    background-color: #2F6FB0;
+    color: white;
+    text-align: center;
+    padding: 40px;
+    border-radius: 8px 8px 0px 0px;
+    font-size: 3em;
+}
+
+header nav {
+    background-color: white;
+    padding: 20px;
+    text-align: center;
+    box-shadow: 0px 2px 0px rgba(128, 128, 128, 0.192);
+    position: relative;
+    z-index: 10;
+}
+
+header a {
+    text-decoration: none;
+    color: #666666;
+    padding-bottom: 20px;
+    margin: 20px;
+    font-size: 1.3em;
+    font-weight: bold;
+}
+
+header a:hover {
+    color: #255A8C;
+    box-shadow: 0px 2px 0px #255A8C;
+}
+
+main {
+    background-color: white;
+    border-radius: 0px 0px 8px 8px;
+    box-shadow: 0px 2px 0px rgba(0, 0, 0, 0.116);
+}
+
+main aside {
+    display: flex;
+    padding: 30px;
+    height: 250px;
+    box-shadow: 0px 2px 0px rgba(128, 128, 128, 0.192);
+}
+
+main div#um {
+    width: 60%;
+    margin-right: 50px;
+}
+
+main div#um h2 {
+    box-shadow: 0px 2px 0px rgba(128, 128, 128, 0.192);
+    padding-bottom: 20px;
+    font-size: 2em;
+}
+
+main div#um p {
+    font-size: 1.2em;
+    padding-top: 20px;
+    padding-bottom: 20px;
+}
+
+main div#um button {
+    padding: 10px;
+    background-color: #2F6FB0;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-size: 1.2em;
+    width: 180px;
+}
+
+main div#dois {
+    width: 40%;
+    box-shadow: -2px 0px 0px rgba(128, 128, 128, 0.192);
+    padding-left: 30px;
+}
+
+main div#dois h2 {
+    font-size: 2em;
+    padding-bottom: 20px;
+}
+
+main div#dois p {
+    font-size: 3em;
+    text-align: center;
+    padding-bottom: 10px;
+}
+
+main div#dois button {
+    padding: 10px;
+    width: 100%;
+    color: white;
+    background-color: #2F6FB0;
+    border: none;
+    font-size: 1.2em;
+    border-radius: 4px;
+}
+
+section {
+    padding: 30px;
+    box-shadow: 0px 2px 0px rgba(128, 128, 128, 0.192);;
+}
+
+section h2 {
+    font-size: 2em;
+    padding-bottom: 30px;
+}
+
+#container {
+    display: flex;
+    gap: 20px;
+}
+
+.imagem {
+    width: 300px;
+    height: 150px;
+    background-color: #b1b7c1;
+    color: white;
+    font-size: 1.2em;
+    font-weight: bold;
+
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+article {
+    padding: 30px;
+}
+
+article h2 {
+    padding-bottom: 20px;
+    font-size: 2em;
+}
+
+#nome1 {
+    display: flex;
+    gap: 50px;
+    padding-bottom: 20px;
+    font-weight: bold;
+}
+
+article input#nome {
+    width: 400px;
+    height: 30px;
+}
+
+#msg {
+    display: flex;
+    gap: 13px;
+    font-weight: bold;
+}
+
+article input#mensagem {
+    width: 400px;
+    height: 150px;
+}
+
+article button {
+    padding: 10px;
+    border: none;
+    color: white;
+    background-color: #2F6FB0;
+    border-radius: 4px;
+    width: 100px;
+    font-size: 1.2em;
+    margin-top: 20px;
+    margin-left: 101px;
+}
