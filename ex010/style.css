@@ -222,8 +222,8 @@ body {
 /* ── Tabs Nav ── */
 .tabs-nav {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: .4rem;
+  grid-template-columns: repeat(5, 1fr);
+  gap: .3rem;
   padding: 1rem 1rem .5rem;
   position: sticky;
   top: 0;
@@ -520,7 +520,7 @@ select option { background: var(--clr-surface); }
   background: linear-gradient(160deg, rgba(124,92,191,.05), transparent);
   opacity: 0;
   transition: opacity var(--transition);
-  pointer-events: none; /* ← linha adicionada */
+  pointer-events: none;
 }
 
 .attr-card:hover {
@@ -906,21 +906,255 @@ input.invalid {
 }
 ::-webkit-scrollbar-thumb:hover { background: var(--clr-gold-dim); }
 
+/* ── Proficiency Bonus Bar ── */
+.prof-bonus-bar {
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+  background: var(--clr-bg2);
+  border: 1px solid var(--clr-gold-dim);
+  border-radius: var(--radius-md);
+  padding: .65rem 1rem;
+  margin-bottom: 1.2rem;
+}
+
+.prof-bonus-label {
+  font-family: var(--font-display);
+  font-size: .68rem;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  color: var(--clr-text2);
+  flex: 1;
+}
+
+.prof-bonus-value {
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--clr-gold2);
+  text-shadow: 0 0 10px rgba(201,168,76,.4);
+  min-width: 2.5rem;
+  text-align: center;
+  transition: all .3s;
+}
+
+.prof-bonus-hint {
+  font-size: .78rem;
+  color: var(--clr-text3);
+  font-style: italic;
+}
+
+/* ── Skills List ── */
+.pericias-list {
+  display: flex;
+  flex-direction: column;
+  gap: .5rem;
+}
+
+.skill-group {
+  background: var(--clr-bg2);
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.skill-group-header {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  padding: .55rem .9rem;
+  background: linear-gradient(90deg, rgba(124,92,191,.12), transparent);
+  border-bottom: 1px solid var(--clr-border);
+}
+
+.skill-group-rune {
+  font-size: 1rem;
+  color: var(--clr-purple2);
+}
+
+.skill-group-name {
+  font-family: var(--font-display);
+  font-size: .68rem;
+  font-weight: 600;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--clr-purple3);
+  flex: 1;
+}
+
+.skill-group-mod {
+  font-family: var(--font-display);
+  font-size: .75rem;
+  color: var(--clr-text3);
+  background: var(--clr-surface);
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius-sm);
+  padding: .15rem .5rem;
+}
+
+/* Individual skill row */
+.skill-row {
+  display: flex;
+  align-items: center;
+  gap: .7rem;
+  padding: .55rem .9rem;
+  border-bottom: 1px solid rgba(58,47,90,.4);
+  transition: background var(--transition);
+  cursor: pointer;
+}
+
+.skill-row:last-child { border-bottom: none; }
+
+.skill-row:hover {
+  background: rgba(124,92,191,.06);
+}
+
+.skill-row.proficient {
+  background: linear-gradient(90deg, rgba(201,168,76,.06), transparent);
+}
+
+.skill-row.proficient:hover {
+  background: linear-gradient(90deg, rgba(201,168,76,.1), transparent);
+}
+
+/* Custom checkbox */
+.skill-checkbox {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 1.1rem;
+  height: 1.1rem;
+  border: 1.5px solid var(--clr-border2);
+  border-radius: 3px;
+  background: var(--clr-bg);
+  cursor: pointer;
+  flex-shrink: 0;
+  position: relative;
+  transition: all var(--transition);
+}
+
+.skill-checkbox:checked {
+  background: var(--clr-gold-dim);
+  border-color: var(--clr-gold);
+  box-shadow: 0 0 8px rgba(201,168,76,.3);
+}
+
+.skill-checkbox:checked::after {
+  content: '✦';
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: .55rem;
+  color: var(--clr-gold2);
+  line-height: 1.1rem;
+  text-align: center;
+}
+
+.skill-checkbox:focus-visible {
+  outline: 2px solid var(--clr-gold);
+  outline-offset: 2px;
+}
+
+.skill-name {
+  flex: 1;
+  font-size: .95rem;
+  color: var(--clr-text2);
+  transition: color var(--transition);
+  user-select: none;
+}
+
+.skill-row.proficient .skill-name {
+  color: var(--clr-text);
+}
+
+.skill-prof-tag {
+  font-family: var(--font-display);
+  font-size: .55rem;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--clr-gold);
+  background: rgba(201,168,76,.1);
+  border: 1px solid var(--clr-gold-dim);
+  border-radius: 3px;
+  padding: .1rem .35rem;
+  opacity: 0;
+  transition: opacity var(--transition);
+}
+
+.skill-row.proficient .skill-prof-tag {
+  opacity: 1;
+}
+
+.skill-mod {
+  font-family: var(--font-display);
+  font-size: .95rem;
+  font-weight: 700;
+  min-width: 2.2rem;
+  text-align: right;
+  transition: color .25s, transform .25s;
+  color: var(--clr-text3);
+}
+
+.skill-mod.positive { color: var(--clr-success); }
+.skill-mod.negative { color: var(--clr-crimson2); }
+.skill-mod.zero     { color: var(--clr-text3); }
+.skill-row.proficient .skill-mod { color: var(--clr-gold2); }
+
+.skill-mod.bump {
+  animation: modBump .3s ease;
+}
+
+@keyframes modBump {
+  0%   { transform: scale(1); }
+  50%  { transform: scale(1.35); }
+  100% { transform: scale(1); }
+}
+
+/* Tooltip */
+.skill-row {
+  position: relative;
+}
+
+.skill-tooltip {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 4px);
+  background: var(--clr-surface2);
+  border: 1px solid var(--clr-border2);
+  border-radius: var(--radius-sm);
+  padding: .4rem .65rem;
+  font-size: .72rem;
+  color: var(--clr-text2);
+  white-space: nowrap;
+  z-index: 10;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(-4px);
+  transition: opacity .2s, transform .2s;
+  box-shadow: var(--shadow-md);
+}
+
+.skill-row:hover .skill-tooltip {
+  opacity: 1;
+  transform: translateY(0);
+}
+
 /* ── Responsive Tweaks ── */
 @media (max-width: 360px) {
   .site-title { font-size: 1.2rem; }
   .panel-inner { padding: 1.2rem 1rem; }
   .stats-grid { grid-template-columns: repeat(2, 1fr); }
   .tab-label { display: none; }
-  .tab-btn { padding: .8rem .4rem; }
-  .tab-icon { font-size: 1.4rem; }
+  .tab-btn { padding: .8rem .2rem; }
+  .tab-icon { font-size: 1.2rem; }
 }
 
 @media (min-width: 600px) {
   .app-wrapper { padding-bottom: 60px; }
   .stats-grid { grid-template-columns: repeat(4, 1fr); }
   .weapon-fields { grid-template-columns: 1fr 1fr 1fr; }
-  .tabs-nav { padding: 1.2rem 1.5rem .6rem; }
+  .tabs-nav { padding: 1.2rem 1.5rem .6rem; gap: .4rem; }
   .tabs-content { padding: .5rem 1.5rem 0; }
   .panel-inner { padding: 1.8rem 2rem; }
 }

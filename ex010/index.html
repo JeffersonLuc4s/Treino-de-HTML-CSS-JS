@@ -42,9 +42,13 @@
         <span class="tab-icon">👤</span>
         <span class="tab-label">Personagem</span>
       </button>
-      <button class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-atributos"  data-tab="atributos">
+      <button class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-atributos" data-tab="atributos">
         <span class="tab-icon">🎲</span>
         <span class="tab-label">Atributos</span>
+      </button>
+      <button class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-pericias" data-tab="pericias">
+        <span class="tab-icon">📖</span>
+        <span class="tab-label">Perícias</span>
       </button>
       <button class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-equipamentos" data-tab="equipamentos">
         <span class="tab-icon">⚔️</span>
@@ -189,7 +193,29 @@
         </div>
       </section>
 
-      <!-- ─── ABA 3: EQUIPAMENTOS ─── -->
+      <!-- ─── ABA 3: PERÍCIAS ─── -->
+      <section id="tab-pericias" class="tab-panel" role="tabpanel" aria-labelledby="tab-pericias">
+        <div class="panel-inner">
+
+          <div class="section-title">
+            <span class="section-deco">✦</span> Perícias
+          </div>
+          <p class="section-hint">Marque as proficiências. Os modificadores são calculados automaticamente com base nos atributos e no nível.</p>
+
+          <div class="prof-bonus-bar">
+            <span class="prof-bonus-label">Bônus de Proficiência</span>
+            <span class="prof-bonus-value" id="prof-bonus-display">+2</span>
+            <span class="prof-bonus-hint">(Nível <span id="prof-nivel-display">1</span>)</span>
+          </div>
+
+          <div id="pericias-list" class="pericias-list">
+            <!-- Renderizado via JS -->
+          </div>
+
+        </div>
+      </section>
+
+      <!-- ─── ABA 4: EQUIPAMENTOS ─── -->
       <section id="tab-equipamentos" class="tab-panel" role="tabpanel" aria-labelledby="tab-equipamentos">
         <div class="panel-inner">
 

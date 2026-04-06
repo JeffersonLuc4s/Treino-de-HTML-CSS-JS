@@ -21,7 +21,8 @@ const defaultData = () => ({
     inteligencia: '', sabedoria: '', carisma: ''
   },
   equipamentos: [],   // [{ id, nome, dano, atributo }]
-  observacoes: ''
+  observacoes: '',
+  pericias: {}        // { acrobacia: true/false, ... }
 });
 
 let appData = defaultData();
@@ -55,11 +56,13 @@ function loadFromStorage() {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return defaultData();
     const parsed = JSON.parse(raw);
+    // Mescla com defaultData para garantir novas chaves
     return {
       personagem:   { ...defaultData().personagem,   ...parsed.personagem },
       atributos:    { ...defaultData().atributos,     ...parsed.atributos },
       equipamentos: Array.isArray(parsed.equipamentos) ? parsed.equipamentos : [],
-      observacoes:  typeof parsed.observacoes === 'string' ? parsed.observacoes : ''
+      observacoes:  typeof parsed.observacoes === 'string' ? parsed.observacoes : '',
+      pericias:     (parsed.pericias && typeof parsed.pericias === 'object') ? parsed.pericias : {}
     };
   } catch {
     return defaultData();
@@ -137,6 +140,7 @@ function bindPersonagem() {
     if (!el) return;
 
     el.addEventListener('input', () => {
+      // Validação básica
       el.classList.remove('invalid');
 
       if (el.type === 'number') {
@@ -150,6 +154,7 @@ function bindPersonagem() {
       }
 
       appData.personagem[field] = el.value;
+      if (field === 'nivel') renderPericias();
       debouncedSave();
     });
   });
@@ -201,6 +206,7 @@ function bindAtributos() {
 
       appData.atributos[attr] = input.value;
       updateMod(modEl, input.value);
+      renderPericias();
       debouncedSave();
     });
   });
@@ -271,16 +277,22 @@ function createWeaponCard(weapon, index) {
     </div>
   `;
 
+  // Botão remover
   card.querySelector('.btn-remove-weapon').addEventListener('click', () => {
     removeWeapon(weapon.id);
   });
 
+  // Inputs da arma
   card.querySelectorAll('input, select').forEach(el => {
     el.addEventListener('input', () => {
-      updateWeaponField(el.dataset.id, el.dataset.field, el.value);
+      const field = el.dataset.field;
+      const id    = el.dataset.id;
+      updateWeaponField(id, field, el.value);
     });
     el.addEventListener('change', () => {
-      updateWeaponField(el.dataset.id, el.dataset.field, el.value);
+      const field = el.dataset.field;
+      const id    = el.dataset.id;
+      updateWeaponField(id, field, el.value);
     });
   });
 
@@ -298,6 +310,7 @@ function addWeapon() {
   saveToStorage();
   renderWeapons();
 
+  // Foca no campo nome da nova arma
   requestAnimationFrame(() => {
     const newInput = document.querySelector(`[id^="w-nome-${newWeapon.id}"]`);
     if (newInput) newInput.focus();
@@ -315,6 +328,7 @@ function updateWeaponField(id, field, value) {
   if (!weapon) return;
   weapon[field] = value;
 
+  // Atualiza título do card em tempo real
   if (field === 'nome') {
     const card = document.querySelector(`.weapon-card[data-id="${id}"]`);
     if (card) {
@@ -341,7 +355,8 @@ function renderObservacoes() {
 }
 
 function bindObservacoes() {
-  const ta = document.getElementById('observacoes');
+  const ta       = document.getElementById('observacoes');
+  const counter  = document.getElementById('char-count');
   if (!ta) return;
 
   ta.addEventListener('input', () => {
@@ -365,13 +380,20 @@ function bindReset() {
   const btnCancel  = document.getElementById('btn-cancel-reset');
   const btnConfirm = document.getElementById('btn-confirm-reset');
 
-  btnReset.addEventListener('click', () => modal.classList.add('show'));
-  btnCancel.addEventListener('click', () => modal.classList.remove('show'));
+  btnReset.addEventListener('click', () => {
+    modal.classList.add('show');
+  });
 
+  btnCancel.addEventListener('click', () => {
+    modal.classList.remove('show');
+  });
+
+  // Fechar clicando fora do modal
   modal.addEventListener('click', e => {
     if (e.target === modal) modal.classList.remove('show');
   });
 
+  // Fechar com Escape
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape' && modal.classList.contains('show')) {
       modal.classList.remove('show');
@@ -388,6 +410,215 @@ function bindReset() {
 }
 
 /* ─────────────────────────────────────────────
+   ABA 5: PERÍCIAS
+───────────────────────────────────────────── */
+
+/** Definição completa das perícias D&D 5E */
+const PERICIAS_DEF = [
+  {
+    grupo: 'Força', atributo: 'forca', rune: 'ᚠ',
+    pericias: [
+      { id: 'atletismo', nome: 'Atletismo' }
+    ]
+  },
+  {
+    grupo: 'Destreza', atributo: 'destreza', rune: 'ᚢ',
+    pericias: [
+      { id: 'acrobacia',       nome: 'Acrobacia' },
+      { id: 'furtividade',     nome: 'Furtividade' },
+      { id: 'prestidigitacao', nome: 'Prestidigitação' }
+    ]
+  },
+  {
+    grupo: 'Inteligência', atributo: 'inteligencia', rune: 'ᛁ',
+    pericias: [
+      { id: 'arcanismo',   nome: 'Arcanismo' },
+      { id: 'historia',    nome: 'História' },
+      { id: 'investigacao',nome: 'Investigação' },
+      { id: 'natureza',    nome: 'Natureza' },
+      { id: 'religiao',    nome: 'Religião' }
+    ]
+  },
+  {
+    grupo: 'Sabedoria', atributo: 'sabedoria', rune: 'ᛊ',
+    pericias: [
+      { id: 'percepcao',        nome: 'Percepção' },
+      { id: 'intuicao',         nome: 'Intuição' },
+      { id: 'medicina',         nome: 'Medicina' },
+      { id: 'sobrevivencia',    nome: 'Sobrevivência' },
+      { id: 'adestrar_animais', nome: 'Adestrar Animais' }
+    ]
+  },
+  {
+    grupo: 'Carisma', atributo: 'carisma', rune: 'ᛏ',
+    pericias: [
+      { id: 'enganacao',    nome: 'Enganação' },
+      { id: 'intimidacao',  nome: 'Intimidação' },
+      { id: 'persuasao',    nome: 'Persuasão' },
+      { id: 'atuacao',      nome: 'Atuação' }
+    ]
+  }
+];
+
+/** Bônus de proficiência por nível */
+function getProfBonus(nivel) {
+  const n = parseInt(nivel) || 1;
+  if (n <= 4)  return 2;
+  if (n <= 8)  return 3;
+  if (n <= 12) return 4;
+  if (n <= 16) return 5;
+  return 6;
+}
+
+/** Calcula modificador final de uma perícia */
+function calcSkillMod(atributo, proficiente, nivel) {
+  const attrVal = parseInt(appData.atributos[atributo]) || 10;
+  const attrMod = Math.floor((attrVal - 10) / 2);
+  const bonus   = proficiente ? getProfBonus(nivel) : 0;
+  return attrMod + bonus;
+}
+
+/** Formata tooltip explicativo */
+function buildTooltip(atributo, proficiente, nivel) {
+  const attrVal = parseInt(appData.atributos[atributo]) || 10;
+  const attrMod = Math.floor((attrVal - 10) / 2);
+  const prof    = getProfBonus(nivel);
+  const modStr  = attrMod >= 0 ? `+${attrMod}` : `${attrMod}`;
+  if (proficiente) {
+    return `${modStr} (${atributo}) + ${prof} (prof) = ${formatMod(attrMod + prof)}`;
+  }
+  return `${modStr} (${atributo}) sem proficiência`;
+}
+
+/** Atualiza o display do bônus de proficiência no topo da aba */
+function updateProfBonusDisplay() {
+  const nivel = appData.personagem.nivel || 1;
+  const bonus = getProfBonus(nivel);
+  const bonusEl = document.getElementById('prof-bonus-display');
+  const nivelEl = document.getElementById('prof-nivel-display');
+  if (bonusEl) bonusEl.textContent = `+${bonus}`;
+  if (nivelEl) nivelEl.textContent = parseInt(nivel) || 1;
+}
+
+/** Renderiza (ou re-renderiza) todos os modificadores sem recriar o DOM */
+function renderPericias() {
+  updateProfBonusDisplay();
+
+  const container = document.getElementById('pericias-list');
+  if (!container) return;
+
+  const nivel = appData.personagem.nivel || 1;
+
+  // Se ainda não foi renderizado, cria a estrutura toda
+  if (!container.dataset.built) {
+    container.innerHTML = '';
+
+    PERICIAS_DEF.forEach(group => {
+      const attrVal = parseInt(appData.atributos[group.atributo]) || 10;
+      const attrMod = Math.floor((attrVal - 10) / 2);
+
+      const groupEl = document.createElement('div');
+      groupEl.classList.add('skill-group');
+      groupEl.dataset.grupo = group.atributo;
+
+      // Cabeçalho do grupo
+      groupEl.innerHTML = `
+        <div class="skill-group-header">
+          <span class="skill-group-rune">${group.rune}</span>
+          <span class="skill-group-name">${group.grupo}</span>
+          <span class="skill-group-mod" id="sgmod-${group.atributo}">${formatMod(attrMod)}</span>
+        </div>
+      `;
+
+      // Linhas de perícia
+      group.pericias.forEach(skill => {
+        const isProficient = !!appData.pericias[skill.id];
+        const mod = calcSkillMod(group.atributo, isProficient, nivel);
+        const modStr = formatMod(mod);
+
+        const row = document.createElement('div');
+        row.classList.add('skill-row');
+        row.dataset.skillId  = skill.id;
+        row.dataset.atributo = group.atributo;
+        if (isProficient) row.classList.add('proficient');
+
+        row.innerHTML = `
+          <input
+            type="checkbox"
+            class="skill-checkbox"
+            id="skill-${skill.id}"
+            aria-label="Proficiência em ${skill.nome}"
+            ${isProficient ? 'checked' : ''}
+          />
+          <label class="skill-name" for="skill-${skill.id}">${skill.nome}</label>
+          <span class="skill-prof-tag">PROF</span>
+          <span class="skill-mod ${mod > 0 ? 'positive' : mod < 0 ? 'negative' : 'zero'}"
+                id="skmod-${skill.id}">${modStr}</span>
+          <span class="skill-tooltip" id="sktt-${skill.id}">${buildTooltip(group.atributo, isProficient, nivel)}</span>
+        `;
+
+        // Evento de checkbox
+        const checkbox = row.querySelector('.skill-checkbox');
+        checkbox.addEventListener('change', () => {
+          appData.pericias[skill.id] = checkbox.checked;
+          row.classList.toggle('proficient', checkbox.checked);
+          updateSingleSkill(skill.id, group.atributo);
+          debouncedSave();
+        });
+
+        groupEl.appendChild(row);
+      });
+
+      container.appendChild(groupEl);
+    });
+
+    container.dataset.built = '1';
+
+  } else {
+    // DOM já existe: apenas atualiza os valores
+    PERICIAS_DEF.forEach(group => {
+      // Atualiza mod do grupo
+      const attrVal = parseInt(appData.atributos[group.atributo]) || 10;
+      const attrMod = Math.floor((attrVal - 10) / 2);
+      const sgMod = document.getElementById(`sgmod-${group.atributo}`);
+      if (sgMod) sgMod.textContent = formatMod(attrMod);
+
+      group.pericias.forEach(skill => {
+        updateSingleSkill(skill.id, group.atributo);
+      });
+    });
+  }
+}
+
+/** Atualiza apenas um skill row (mod + tooltip + classes) */
+function updateSingleSkill(skillId, atributo) {
+  const nivel = appData.personagem.nivel || 1;
+  const isProficient = !!appData.pericias[skillId];
+  const mod = calcSkillMod(atributo, isProficient, nivel);
+  const modStr = formatMod(mod);
+
+  const modEl = document.getElementById(`skmod-${skillId}`);
+  const ttEl  = document.getElementById(`sktt-${skillId}`);
+
+  if (modEl) {
+    const prev = modEl.textContent;
+    if (prev !== modStr) {
+      modEl.textContent = modStr;
+      modEl.className = `skill-mod ${mod > 0 ? 'positive' : mod < 0 ? 'negative' : 'zero'}`;
+      if (isProficient) modEl.classList.add('proficient-val');
+      // Animação de bump ao mudar
+      modEl.classList.remove('bump');
+      void modEl.offsetWidth; // reflow
+      modEl.classList.add('bump');
+    }
+  }
+
+  if (ttEl) {
+    ttEl.textContent = buildTooltip(atributo, isProficient, nivel);
+  }
+}
+
+/* ─────────────────────────────────────────────
    RENDER ALL
 ───────────────────────────────────────────── */
 function renderAll() {
@@ -395,6 +626,7 @@ function renderAll() {
   renderAtributos();
   renderWeapons();
   renderObservacoes();
+  renderPericias();
 }
 
 /* ─────────────────────────────────────────────
@@ -417,6 +649,7 @@ function init() {
   appData = loadFromStorage();
 
   initTabs();
+
   bindPersonagem();
   bindAtributos();
   bindEquipamentos();
