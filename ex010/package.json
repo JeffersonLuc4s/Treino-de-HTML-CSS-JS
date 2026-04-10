@@ -1,0 +1,17 @@
+{
+  "name": "grimorio-do-aventureiro",
+  "version": "1.0.0",
+  "description": "D&D 5E Character Sheet with auth backend",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node --watch server/index.js"
+  },
+  "dependencies": {
+    "bcrypt": "^5.1.1",
+    "better-sqlite3": "^9.6.0",
+    "cors": "^2.8.5",
+    "express": "^4.19.2",
+    "jsonwebtoken": "^9.0.2"
+  }
+}

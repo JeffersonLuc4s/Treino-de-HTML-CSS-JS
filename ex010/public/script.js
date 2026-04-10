@@ -295,9 +295,12 @@ function skillLabel(id){
 }
 
 /* ═══════════════════════════════════════════════════════════
-   LOCAL STORAGE
+   PERSISTÊNCIA — API + LocalStorage como cache
 ═══════════════════════════════════════════════════════════ */
+let currentCharId = null;  // ID do personagem no banco
+
 function loadFromStorage() {
+  // Cache local (fallback offline)
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return null;
@@ -325,21 +328,49 @@ function loadFromStorage() {
       inspiracao:    !!p.inspiracao,
       observacoes:   p.observacoes||'',
     };
-  } catch(e){ console.warn('Load error:',e); return null; }
+  } catch(e){ console.warn('Cache load error:',e); return null; }
 }
 
-function saveToStorage(){
-  try{ localStorage.setItem(STORAGE_KEY,JSON.stringify(appData)); showToast(); }
-  catch(e){ console.warn('Save error:',e); }
+function saveToLocalCache() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(appData)); }
+  catch(e){ console.warn('Cache save error:',e); }
 }
-function debouncedSave(){ clearTimeout(saveTimeout); saveTimeout=setTimeout(saveToStorage,700); }
+
+async function saveToServer() {
+  if (!window.GrimorioAPI?.Auth.isLoggedIn()) {
+    saveToLocalCache(); showToast(); return;
+  }
+  try {
+    const { CharacterAPI } = window.GrimorioAPI;
+    currentCharId = await CharacterAPI.save(appData, currentCharId);
+    localStorage.setItem('grimorio_current_char_id', currentCharId);
+    saveToLocalCache();
+    showToast();
+  } catch(e) {
+    console.warn('Server save error:', e);
+    saveToLocalCache(); // fallback to cache
+    showToast('⚠️ Salvo localmente (offline)');
+  }
+}
+
+function debouncedSave(){
+  clearTimeout(saveTimeout);
+  saveTimeout = setTimeout(saveToServer, 800);
+}
+
+// Override saveToStorage to use server
+function saveToStorage(){ saveToServer(); }
+
 
 /* ═══════════════════════════════════════════════════════════
    TOAST
 ═══════════════════════════════════════════════════════════ */
 let toastTimer=null;
-function showToast(){
-  const t=$('toast'); t.classList.add('show'); clearTimeout(toastTimer);
+function showToast(msg) {
+  const t=$('toast');
+  if(msg) t.innerHTML = `<span>${msg}</span>`;
+  else    t.innerHTML = `<span class="toast-icon">✦</span> Salvo automaticamente`;
+  t.classList.add('show'); clearTimeout(toastTimer);
   toastTimer=setTimeout(()=>t.classList.remove('show'),2200);
 }
 
@@ -1306,16 +1337,260 @@ function bindFicha(){
 let modalMode='reset';
 function bindReset(){
   const modal=$('modal-reset');
-  $('btn-reset').addEventListener('click',()=>{modalMode='reset';$('modal-icon').textContent='⚠️';$('modal-title').textContent='Limpar Ficha?';$('modal-text').textContent='Todos os dados serão apagados permanentemente.';modal.classList.add('show');});
-  $('btn-new-char').addEventListener('click',()=>{modalMode='new';$('modal-icon').textContent='✨';$('modal-title').textContent='Novo Personagem?';$('modal-text').textContent='Os dados atuais serão perdidos.';modal.classList.add('show');});
-  $('btn-cancel-reset').addEventListener('click',()=>modal.classList.remove('show'));
+
+  $('btn-reset')?.addEventListener('click',()=>{
+    modalMode='reset';
+    $('modal-icon').textContent='⚠️';
+    $('modal-title').textContent='Limpar Ficha?';
+    $('modal-text').textContent='Todos os dados locais serão apagados. No servidor o personagem permanece.';
+    modal.classList.add('show');
+  });
+
+  $('btn-new-char')?.addEventListener('click',()=>{
+    modalMode='new';
+    $('modal-icon').textContent='✨';
+    $('modal-title').textContent='Novo Personagem?';
+    $('modal-text').textContent='Os dados atuais serão perdidos. Criar novo personagem?';
+    modal.classList.add('show');
+  });
+
+  $('btn-cancel-reset')?.addEventListener('click',()=>modal.classList.remove('show'));
   modal.addEventListener('click',e=>{if(e.target===modal)modal.classList.remove('show');});
   document.addEventListener('keydown',e=>{if(e.key==='Escape')modal.classList.remove('show');});
-  $('btn-confirm-reset').addEventListener('click',()=>{
-    localStorage.removeItem(STORAGE_KEY); appData=defaultData(); modal.classList.remove('show');
+
+  $('btn-confirm-reset')?.addEventListener('click',()=>{
+    localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem('grimorio_current_char_id');
+    appData=defaultData();
+    currentCharId=null;
+    modal.classList.remove('show');
     if(modalMode==='new'){showCreation();}
-    else{['saving-throws-list','prof-pericias-list','conditions-grid'].forEach(id=>{const e=$(id);if(e){e.innerHTML='';delete e.dataset.built;}});renderAll();showToast();}
+    else{
+      ['saving-throws-list','prof-pericias-list','conditions-grid'].forEach(id=>{
+        const e=$(id);if(e){e.innerHTML='';delete e.dataset.built;}
+      });
+      renderAll(); showToast('🧹 Ficha limpa');
+    }
   });
+
+  // Lista de personagens
+  $('btn-char-list')?.addEventListener('click', showCharacterList);
+
+  // Logout (botão no rodapé da ficha)
+  $('btn-logout-sheet')?.addEventListener('click', handleLogout);
+}
+
+function handleLogout() {
+  if(window.GrimorioAPI) window.GrimorioAPI.Auth.logout();
+  localStorage.removeItem(STORAGE_KEY);
+  localStorage.removeItem('grimorio_current_char_id');
+  appData = defaultData();
+  currentCharId = null;
+  $('app-wrapper').style.display = 'none';
+  $('creation-overlay').classList.add('hidden');
+  $('char-list-overlay').style.display = 'none';
+  $('auth-overlay').style.removeProperty('display');
+  showAuthTab('login');
+}
+
+/* ═══════════════════════════════════════════════════════════
+   AUTH UI
+═══════════════════════════════════════════════════════════ */
+function initAuth() {
+  // Tab switching
+  document.querySelectorAll('.auth-tab').forEach(btn => {
+    btn.addEventListener('click', () => showAuthTab(btn.dataset.authtab));
+  });
+
+  // Login form
+  $('login-form')?.addEventListener('submit', async e => {
+    e.preventDefault();
+    const username = $('login-username').value.trim();
+    const password = $('login-password').value;
+    const errEl = $('login-error');
+    errEl.style.display = 'none';
+
+    const btn = e.target.querySelector('button[type=submit]');
+    btn.disabled = true; btn.textContent = 'Entrando…';
+
+    try {
+      await window.GrimorioAPI.AuthAPI.login(username, password);
+      await afterLogin();
+    } catch(err) {
+      errEl.textContent = err.message;
+      errEl.style.display = 'block';
+    } finally {
+      btn.disabled = false; btn.textContent = '⚔️ Entrar na Aventura';
+    }
+  });
+
+  // Register form
+  $('register-form')?.addEventListener('submit', async e => {
+    e.preventDefault();
+    const username = $('reg-username').value.trim();
+    const password = $('reg-password').value;
+    const confirm  = $('reg-confirm').value;
+    const errEl    = $('register-error');
+    errEl.style.display = 'none';
+
+    if (password !== confirm) {
+      errEl.textContent = 'As senhas não coincidem.';
+      errEl.style.display = 'block'; return;
+    }
+
+    const btn = e.target.querySelector('button[type=submit]');
+    btn.disabled = true; btn.textContent = 'Criando conta…';
+
+    try {
+      await window.GrimorioAPI.AuthAPI.register(username, password);
+      await afterLogin();
+    } catch(err) {
+      errEl.textContent = err.message;
+      errEl.style.display = 'block';
+    } finally {
+      btn.disabled = false; btn.textContent = '📜 Criar Conta';
+    }
+  });
+
+  // Token expired event
+  window.addEventListener('auth:expired', () => handleLogout());
+}
+
+function showAuthTab(tab) {
+  const isLogin = tab === 'login';
+  $('login-form').style.display    = isLogin ? '' : 'none';
+  $('register-form').style.display = isLogin ? 'none' : '';
+  document.querySelectorAll('.auth-tab').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.authtab === tab);
+    btn.setAttribute('aria-selected', String(btn.dataset.authtab === tab));
+  });
+}
+
+async function afterLogin() {
+  $('auth-overlay').style.display = 'none';
+  await showCharacterList();
+}
+
+/* ═══════════════════════════════════════════════════════════
+   LISTA DE PERSONAGENS
+═══════════════════════════════════════════════════════════ */
+async function showCharacterList() {
+  $('app-wrapper').style.display = 'none';
+  $('creation-overlay').classList.add('hidden');
+  const overlay = $('char-list-overlay');
+  overlay.style.display = 'flex';
+
+  const user = window.GrimorioAPI?.Auth.getUser();
+  setEl('char-list-username', user?.username || '—');
+
+  $('btn-logout')?.addEventListener('click', handleLogout);
+  $('btn-create-new-char')?.addEventListener('click', () => {
+    overlay.style.display = 'none';
+    currentCharId = null;
+    appData = defaultData();
+    showCreation();
+  });
+
+  await renderCharacterList();
+}
+
+async function renderCharacterList() {
+  const container = $('char-list-items');
+  if (!container) return;
+
+  container.innerHTML = '<div class="char-list-loading">⏳ Carregando…</div>';
+
+  try {
+    const chars = await window.GrimorioAPI.CharacterAPI.list();
+    container.innerHTML = '';
+
+    if (!chars.length) {
+      container.innerHTML = '<div class="char-list-empty">Nenhum personagem criado ainda.<br>Crie o seu primeiro herói! ⚔️</div>';
+      return;
+    }
+
+    chars.forEach(ch => {
+      const card = document.createElement('div');
+      card.className = 'char-card';
+      card.innerHTML = `
+        <div class="char-card-info">
+          <div class="char-card-name">${esc(ch.nome) || 'Sem nome'}</div>
+          <div class="char-card-sub">${esc(ch.raca)||'—'} · ${esc(ch.classe)||'—'} · Nível ${ch.nivel||1}</div>
+          <div class="char-card-date">Editado: ${formatDate(ch.updated_at)}</div>
+        </div>
+        <div class="char-card-actions">
+          <button class="btn btn-load-char" data-id="${ch.id}">Abrir</button>
+          <button class="btn btn-del-char" data-id="${ch.id}" title="Deletar">🗑</button>
+        </div>`;
+      card.querySelector('.btn-load-char').addEventListener('click', () => loadCharacter(ch.id));
+      card.querySelector('.btn-del-char').addEventListener('click', () => deleteCharacter(ch.id, card));
+      container.appendChild(card);
+    });
+  } catch(err) {
+    container.innerHTML = `<div class="char-list-error">❌ ${err.message}</div>`;
+  }
+}
+
+async function loadCharacter(id) {
+  try {
+    const data = await window.GrimorioAPI.CharacterAPI.get(id);
+    appData = mergeWithDefault(data);
+    currentCharId = id;
+    localStorage.setItem('grimorio_current_char_id', id);
+    saveToLocalCache();
+    $('char-list-overlay').style.display = 'none';
+    ['saving-throws-list','prof-pericias-list','conditions-grid'].forEach(id=>{
+      const e=$(id);if(e){e.innerHTML='';delete e.dataset.built;}
+    });
+    showApp();
+  } catch(err) {
+    alert('Erro ao carregar personagem: ' + err.message);
+  }
+}
+
+async function deleteCharacter(id, cardEl) {
+  if (!confirm('Deletar este personagem permanentemente?')) return;
+  try {
+    await window.GrimorioAPI.CharacterAPI.delete(id);
+    cardEl.classList.add('char-card-removing');
+    setTimeout(() => cardEl.remove(), 300);
+    if (currentCharId === id) { currentCharId = null; appData = defaultData(); }
+  } catch(err) {
+    alert('Erro ao deletar: ' + err.message);
+  }
+}
+
+function mergeWithDefault(data) {
+  const d = defaultData();
+  return {
+    personagem:    {...d.personagem,   ...data.personagem},
+    atributos:     {...d.atributos,    ...data.atributos},
+    atributosBase: {...d.atributosBase,...(data.atributosBase||data.atributos)},
+    vida:          {...d.vida,         ...data.vida},
+    combate:       {...d.combate,      ...data.combate},
+    hitDice:       {...d.hitDice,      ...data.hitDice},
+    armas:         Array.isArray(data.armas)?data.armas:[],
+    inventario:    Array.isArray(data.inventario)?data.inventario:[],
+    moedas:        {...d.moedas,       ...data.moedas},
+    pericias:      data.pericias||{},
+    proficiencias: {savingThrows:data.proficiencias?.savingThrows||{}},
+    condicoes:     data.condicoes||{},
+    exaustao:      data.exaustao||0,
+    resistencias:  Array.isArray(data.resistencias)?data.resistencias:[],
+    magias:        {...d.magias,       ...data.magias},
+    personalidade: {...d.personalidade,...data.personalidade},
+    aparencia:     {...d.aparencia,    ...data.aparencia},
+    idiomas:       Array.isArray(data.idiomas)?data.idiomas:[],
+    background:    {...d.background,   ...data.background},
+    inspiracao:    !!data.inspiracao,
+    observacoes:   data.observacoes||'',
+  };
+}
+
+function formatDate(iso) {
+  if (!iso) return '—';
+  try { return new Date(iso).toLocaleDateString('pt-BR', {day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}); }
+  catch { return iso; }
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -1336,7 +1611,8 @@ function renderAll(){
 /* ═══════════════════════════════════════════════════════════
    INIT
 ═══════════════════════════════════════════════════════════ */
-function init(){
+async function init() {
+  initAuth();
   initWizard();
   initTabs();
   bindCombate();
@@ -1348,12 +1624,32 @@ function init(){
   bindFicha();
   bindReset();
 
-  const saved=loadFromStorage();
-  if(saved){ appData=saved; showApp(); }
-  else{ showCreation(); }
+  const { Auth, AuthAPI } = window.GrimorioAPI || {};
 
-  console.log('%cGrimório do Aventureiro 🐉 v6.0','color:#c9a84c;font-size:1.1rem;font-weight:bold;');
-  console.log('%cFicha D&D 5E SRD Completa — pronta para a mesa!','color:#7c5cbf;');
+  // Already logged in?
+  if (Auth?.isLoggedIn()) {
+    try {
+      await AuthAPI.me(); // validate token
+      const savedId = localStorage.getItem('grimorio_current_char_id');
+      if (savedId) {
+        try {
+          await loadCharacter(parseInt(savedId));
+          return;
+        } catch(_) { /* fall through to character list */ }
+      }
+      await showCharacterList();
+    } catch(_) {
+      Auth.clear();
+      // fall through to auth screen
+    }
+  }
+
+  // Not logged in — show auth
+  $('auth-overlay').style.removeProperty('display');
+
+  console.log('%cGrimório do Aventureiro 🐉 v6.1','color:#c9a84c;font-size:1.1rem;font-weight:bold;');
+  console.log('%cD&D 5E SRD · Auth + DB integrados','color:#7c5cbf;');
 }
 
-document.addEventListener('DOMContentLoaded',init);
+document.addEventListener('DOMContentLoaded', init);
+
